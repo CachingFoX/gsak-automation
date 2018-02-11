@@ -3,7 +3,7 @@
 # MacDescription = Sets the name of the Hawaiian island in the column county for every cache
 # MacAuthor = CachingFoX
 # MacFileName = SetHawaii.gsk
-# MacUrl =
+# MacUrl = https://raw.githubusercontent.com/CachingFoX/gsak-automation/master/SetHawaii.gsk
 #*******************************************
 
 transaction action=begin
