@@ -1,8 +1,8 @@
 #*******************************************
-# MacVersion = v0.1.2
+# MacVersion = 0.1.6
 # MacDescription = Group-n-Count
 # MacAuthor = CachingFoX
-# MacFileName = Group-n-Count.gsk
+# MacFileName = groupncount.gsk
 # MacUrl =
 #*******************************************
 
@@ -10,37 +10,77 @@
 # v0.1.0 - Proof of concept
 # v0.1.1 - (skipped)
 # v0.1.2 - set default value for table( and column)
-#      - sorting options (columns: value, count) and DESC order
+#        - sorting options (columns: value, count) and DESC order
+# v0.1.3 - new function sum
+# v0.1.4 - new function average
+#      - set sort mode DESC by default
+# v0.1.5 - new function min/max
+#      - improve average function: change grid search >=/=/<= than average
+#      - show min/max record in GSAK grid (MFilter)
+# v0.1.6 - save of dialog settings (remove default configuration of Table and Column)
 
+# Ideas
+# - improve drop down list column: values are sorted
+# - set fromat for date/time fields
+# - function max/min
+# - use data type of column to enable/disable functions
+# - show more than one column (for grouped results)
+# - combine sum/average/min/max
+# - show total number of items
+# - bug: min/max/average if table is not Caches
+# - bug: if average equal MFilter result without matches everything is show (no hint to the user is given)
+# - number of groups
+# - display full name of caches types
+# - multiple groups
+# - save last dialog configuration
+# - support views
+
+##############################################################################################################
+# load tables
+#
 $status = sqlite("sql", "SELECT * FROM sqlite_master WHERE type = 'table'", "sqlget=0")
 $data = ""
 While not($_sqleol)	
   $data = $data + ";" + SqlGet("tbl_name")
   SqlNext
 Endwhile
-
-
 $mainForm = EditForm($mainForm,"ComboboxTable","Values",$data)
-$ComboboxTable="Caches"
+
+##############################################################################################################
+# load settings 
+#
+$ComboboxTable = ""
+$ComboboxColumn = ""
+MacSettings Type=R FileCheck=N
+
+##############################################################################################################
+# load columns of the table
+#
+$tempComboboxColumn = $ComboboxColumn
 Gosub Name=updateFormColumns
-$ComboboxColumn="Country"
+$ComboboxColumn=$tempComboboxColumn
 $mainForm = EditForm($mainForm,"radioSortingValue","Caption",$ComboboxColumn)
-$radioSortingNone=True
+
 
 
 While True # Infinite loop to redisplay form as required
   $FormExit = form($mainForm,"")
+  Gosub Name=SaveSettings
   BeginCase
     Case $FormExit = "ComboboxTable"
       Gosub Name=updateFormColumns	
     Case $FormExit = "ComboboxColumn"
       $mainForm = EditForm($mainForm,"radioSortingValue","Caption",$ComboboxColumn)
-    Case $FormExit = "DelayExit"
-      MsgOk msg="Form exit via Delay"
-      break
     Case $FormExit = "btnCount"
-     Gosub Name=Execute
-	
+      Gosub Name=executeCount
+    Case $FormExit = "btnSum"
+     Gosub Name=executeSum
+    Case $FormExit = "btnAverage"
+     Gosub Name=executeAverage	
+    Case $FormExit = "btnMax"
+     Gosub Name=executeMax
+    Case $FormExit = "btnMin"
+     Gosub Name=executeMin
     Case $FormExit = "SystemExit"
       break
     Case $FormExit = "btnCancel"
@@ -48,8 +88,11 @@ While True # Infinite loop to redisplay form as required
   EndCase
 EndWhile
 
+BeginSub Name=SaveSettings
+    MacSettings Type=S Vars=ComboboxTable,ComboboxColumn,radioSortingNone,radioSortingValue,radioSortingCount,CheckboxDESC,radioGreater,radioEqual,radioLesser
+EndSub
 
-BeginSub Name=Execute
+BeginSub Name=executeCount
     $value = $ComboboxColumn
     $sorting = ""
     IF $CheckboxDESC = True 
@@ -68,7 +111,56 @@ BeginSub Name=Execute
     $html = sqltohtml($result,"","y")
 EndSub
 
+BeginSub Name=executeSum
+    $value = $ComboboxColumn
+    $sql = "SELECT sum("+$ComboboxColumn+") AS sum FROM "+$ComboboxTable
+    $result = sqlite( "sql", $sql ) 
+    MsgOk msg="Sum of $value: $result"
+EndSub
+
+BeginSub Name=executeAverage
+    $value = $ComboboxColumn
+    $sql = "SELECT avg("+$ComboboxColumn+") AS sum FROM "+$ComboboxTable
+    $result = sqlite( "sql", $sql ) 
+
+    BeginCase
+      Case $radioGreater = True
+        $operator = ">="
+      Case $radioEqual = True
+        $operator = "="
+      Case $radioLesser = True
+        $operator = "<="
+    EndCase	
+
+    $_sql="$ComboboxColumn $operator (select avg($ComboboxColumn) FROM $ComboboxTable )"
+    MFILTER where=$_sql
+
+    MsgOk msg="Average of $value: $result at $_Count caches"
+EndSub
+
+BeginSub Name=executeMax
+    $value = $ComboboxColumn
+    $sql = "SELECT max("+$ComboboxColumn+") AS sum FROM "+$ComboboxTable
+    $result = sqlite( "sql", $sql ) 
+    MsgOk msg="Max of $value: $result"
+    $_sql="$ComboboxColumn = (select max($ComboboxColumn) FROM $ComboboxTable )"
+    MFILTER where=$_sql
+EndSub
+
+BeginSub Name=executeMin
+    $value = $ComboboxColumn
+    $sql = "SELECT min("+$ComboboxColumn+") AS sum FROM "+$ComboboxTable
+    $result = sqlite( "sql", $sql ) 
+    MsgOk msg="Min of $value: $result"
+    $_sql="$ComboboxColumn = (select min($ComboboxColumn) FROM $ComboboxTable )"
+    MFILTER where=$_sql
+EndSub
+
+
 BeginSub Name=updateFormColumns
+    IF $ComboboxTable = ""
+      ExitSub
+    ENDIF
     $status = sqlite("sql", "PRAGMA table_info("+$ComboboxTable+");", "sqlget=0")
     $data = ""
     While not($_sqleol)	
@@ -78,6 +170,10 @@ BeginSub Name=updateFormColumns
     $mainForm = EditForm($mainForm,"ComboboxColumn","Values",$data)
 EndSub
 
+
+
+#select FavPoints,* from caches where 
+#    MFILTER where="code in (SELECT C.code FROM Caches AS C LEFT JOIN (SELECT *,MAX(lDate) FROM Logs WHERE lType == 'Publish Listing' GROUP BY lParent) L ON C.Code == L.lParent WHERE C.CacheType == 'V' AND L.lParent IS NULL)"
 
 # get the sql data to display
 # $result = sqlite("sql","SELECT strftime('%Y-%W', lDate ) AS CalenderWeek, count(*) FROM Caches AS C INNER JOIN (SELECT *,MAX(lDate) FROM Logs WHERE lType == 'Publish Listing' GROUP BY lParent) L ON C.Code == L.lParent GROUP BY CalenderWeek ORDER BY CalenderWeek ASC","Headings=Yes")
@@ -90,7 +186,7 @@ EndSub
 
 <Data> VarName=$mainForm
 #********************************************************************
-# Form generated by GSAK form designer on Tue 06-Feb-2018 11:14:48
+# Form generated by GSAK form designer on Tue 06-Feb-2018 16:52:38
 #********************************************************************
 
 Name = mainForm
@@ -102,28 +198,55 @@ Name = mainForm
 Name = GroupboxSorting
   Type = Groupbox
   Caption = Sorting
-  Height = 97
+  Height = 121
   Left = 296
-  Top = 8
+  Top = 16
   Width = 185
   Taborder = 6
+
+Name = Groupbox1
+  Type = Groupbox
+  Caption = Average
+  Height = 89
+  Left = 296
+  Top = 144
+  Width = 185
+  Taborder = 12
 
 Name = btnCount
   Type = Button
   Alignment = Center
   Height = 25
-  Left = 408
-  Top = 200
+  Left = 8
+  Top = 240
   Width = 75
   Taborder = 3
   Caption = Count
+
+Name = btnSum
+  Type = Button
+  Height = 25
+  Left = 88
+  Top = 240
+  Width = 75
+  Taborder = 8
+  Caption = Sum
+
+Name = btnAverage
+  Type = Button
+  Height = 25
+  Left = 168
+  Top = 240
+  Width = 75
+  Taborder = 9
+  Caption = Average
 
 Name = btnCancel
   Type = Button
   Alignment = Center
   Height = 25
   Left = 408
-  Top = 232
+  Top = 240
   Width = 75
   Taborder = 4
   Caption = Cancel
@@ -169,7 +292,7 @@ Name = radioSortingNone
   Height = 20
   Left = 16
   Top = 16
-  Width = 65
+  Width = 161
   Taborder = 0
   Caption = None
 
@@ -177,9 +300,9 @@ Name = radioSortingValue
   Type = Radiobutton
   Container = GroupboxSorting
   Height = 20
-  Left = 88
-  Top = 16
-  Width = 82
+  Left = 16
+  Top = 40
+  Width = 161
   Taborder = 1
   Caption = Value
 
@@ -187,9 +310,9 @@ Name = radioSortingCount
   Type = Radiobutton
   Container = GroupboxSorting
   Height = 20
-  Left = 88
-  Top = 40
-  Width = 82
+  Left = 16
+  Top = 64
+  Width = 161
   Taborder = 2
   Caption = Count
 
@@ -197,13 +320,82 @@ Name = CheckboxDESC
   Type = Checkbox
   Container = GroupboxSorting
   Height = 20
-  Left = 88
-  Top = 64
-  Width = 82
+  Left = 8
+  Top = 88
+  Width = 169
   Taborder = 3
   Caption = DESC order
 
+Name = memoWhereClause
+  Type = Memo
+  Height = 89
+  Left = 8
+  Top = 120
+  Visible = No
+  Width = 273
+  Taborder = 7
+
+Name = labelWhereClause
+  Type = Label
+  Height = 17
+  Left = 8
+  Top = 104
+  Visible = No
+  Width = 83
+  Caption = WHERE clause
+
+Name = btnMax
+  Type = Button
+  Height = 25
+  Left = 248
+  Top = 240
+  Width = 75
+  Taborder = 10
+  Caption = Max
+
+Name = btnMin
+  Type = Button
+  Height = 25
+  Left = 328
+  Top = 240
+  Width = 75
+  Taborder = 11
+  Caption = Min
+
+Name = radioGreater
+  Type = Radiobutton
+  Container = Groupbox1
+  Height = 20
+  Left = 16
+  Top = 16
+  Width = 98
+  Taborder = 0
+  Caption = greater than or equal
+
+Name = radioEqual
+  Type = Radiobutton
+  Container = Groupbox1
+  Height = 20
+  Left = 16
+  Top = 40
+  Width = 98
+  Taborder = 1
+  Caption = equal
+
+Name = radioLesser
+  Type = Radiobutton
+  Container = Groupbox1
+  Height = 20
+  Left = 16
+  Top = 64
+  Width = 129
+  Taborder = 2
+  Caption = lesser than or equal
+
 <enddata>
+
+
+
 
 
 
