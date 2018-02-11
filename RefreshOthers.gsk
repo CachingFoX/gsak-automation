@@ -1,0 +1,76 @@
+#*******************************************
+# MacVersion = 0.1
+# MacDescription = This scripts helps you to update data of all caches with type 'Other'. Sometimes the 'Refresh cache data...' doesn't work proper, because the gpx contains erros and is not well-formed
+# MacAuthor = CachingFoX
+# MacFileName = RefreshOthers.gsk
+# MacUrl = https://raw.githubusercontent.com/CachingFoX/gsak-automation/master/RefreshOthers.gsk
+#*******************************************
+
+MFILTER where="CacheType == 'O'"
+$codes = ""
+Goto Position=Top
+While not($_EOL)
+  if ( $codes = "" )
+    $codes = $d_code
+  else 
+    $codes = $codes + ","+ $d_Code
+  endif 
+  Goto Position=Next
+EndWhile
+
+$settings = Replace( "%%GCCODES%%", $codes, $GcGetGeocachesSettings ) 
+MACROSET Dialog=GcGeocaches Varname=$settings
+GcGetCaches Settings=<MACRO> Load=Y ShowSummary=Yes 
+
+<data> VarName=$GcGetGeocachesSettings
+[GcGeocaches]
+cbxDifMax.Text=5.0
+cbxDifMin.Text=1.0
+cbxLoadSettings.Text=* Use GSAK defaults *
+cbxTerMax.Text=5.0
+cbxTerMin.Text=1.0
+chkArchived.Checked=True
+chkFoundByMe.Checked=True
+chkLarge.Checked=True
+chkMicro.Checked=True
+chkNotChosen.Checked=True
+chkOther.Checked=True
+chkPremium.Checked=True
+chkRegular.Checked=True
+chkSmall.Checked=True
+chkVirtual.Checked=True
+edtHiddenBy.Text=
+edtLogsPerCache.Text=0
+edtMax.Text=10000
+edtNotFoundBy.Text=
+rbtFull.Checked=False
+rbtLite.Checked=True
+cbxref.Text=
+edtDistance.Text=20
+d1.Checked=True
+d2.Checked=False
+edtNotHiddenBy.Text=
+edtbbBottom.Text=
+rbtRectangle.Checked=False
+rbtCircle.Checked=False
+edtbbtop.Text=
+edtFavmin.Text=0
+edtFavMax.Text=99999
+rbtCode.Checked=True
+cbxPublishDate.Text=Not applicable
+edtDuringDays.Text=
+rbtCtyState.Checked=False
+rbtCountry.Checked=False
+rbtNone.Checked=True
+rbtState.Checked=False
+edtSaveCountry.Text=
+edtSaveState.Text=12
+edtGridColor.Color=65535
+NotCacheTypes=~
+edtPublishFrom=1899-12-30
+edtPublishTo=1899-12-30
+edtCodes.Text=%%GCCODES%%
+<enddata>
+
+
+
