@@ -1,0 +1,10 @@
+{
+    "[gsak]": {
+        "files.encoding": "windows1252"
+    },
+    "files.associations": {
+        "*.gsk": "gsak",
+        "*.polygon": "gsak"
+    },
+}
+
