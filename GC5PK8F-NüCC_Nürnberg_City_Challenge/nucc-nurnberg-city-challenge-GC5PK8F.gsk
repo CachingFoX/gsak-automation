@@ -14,18 +14,9 @@
 49.331388 10.988626 
 <enddata>
 
-# nbg 
-# top left: 49.540828,10.988626
-# bottom right: 49.331388,11.282460
 
-# nbg ohne brunn
-# top left: 49.540828,10.988626
-# bottom right: 49.331388,11.213578
-# brunn
-# top left: 49.441144, 11.248348
-# bottom right: 49.409419, 11.282460
 
-$field = "U" # GetPolygon fields: http://gsak.net/help/hs23760.htm
+$field = "UOZ" # GetPolygon fields: http://gsak.net/help/hs23760.htm
 # Workaround for development and productive usage
 $folder = ".\assets\"
 IF FolderExists($folder)
@@ -37,6 +28,7 @@ ENDIF
 
 transaction action=begin
 
+CANCELFILTER
 Goto Position=Top
 While not($_Eol)
    $d_UserData = ""
@@ -48,12 +40,5 @@ EndWhile
 $updated = GetPolygon( $field, $folder+"nucc*.polygon" )
 $updated = GetPolygon( $field+ " update=[]", $folder+"nucc-16c.polygon" ) # workaround 
 $tmpN = GetCounty("yb")
-
-# get the sql data to display
-#$result = sqlite("sql","SELECT UserData, count(*) FROM caches where found = 0 GROUP BY UserData;","Headings=Yes")
-
-# display the data
-#$html = sqltohtml($result,"Summary by log type","y")
-
 
 transaction action=end
