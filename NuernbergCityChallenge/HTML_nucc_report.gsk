@@ -1,0 +1,27 @@
+#*******************************************
+# MacVersion = 1.2
+# MacDescription = NüCC Report
+# MacAuthor = clyde
+# MacFileName = HTML_nucc_report.gsk
+# MacUrl =
+# HTMLName=NüCC Report
+# SplitScreen=Yes
+# Export=No
+# Offline=No
+# Condensed=No
+#*******************************************
+
+$html = ""
+<data> Varname=$sql
+select UserData as "Gebiet", count(*) as Total, 
+( select count(*)  from caches where found=1 and UserData = x.UserData) as Founded,
+( select count(*)  from caches where found=0 and UserData = x.UserData) as NotFounded
+FROM caches as x where UserData <> "" group by UserData;
+<enddata>
+
+$result = sqlite("sql", $sql,"Headings=Yes")
+$html = sqltohtml($result,"","n")
+
+$_Html = $html
+
+

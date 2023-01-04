@@ -1,0 +1,27 @@
+#MFILTER <Where=SQLite where> [<Reverse=Yes|No>] [<Join=None|or|and>]
+#Goto Position=Top
+#While not($_Eol)
+###   $d_UserData = ""
+#   $d_County = ""
+#   Goto Position=Next
+#EndWhile
+
+# nbg 
+# top left: 49.540828,10.988626
+# bottom right: 49.331388,11.282460
+
+# nbg ohne brunn
+# top left: 49.540828,10.988626
+# bottom right: 49.331388,11.213578
+# brunn
+# top left: 49.441144, 11.248348
+# bottom right: 49.409419, 11.282460
+
+
+<data> Varname=$polygonNbg
+49.331388 10.988626 
+49.540828 10.988626 
+49.540828 11.282460 
+49.331388 11.282460 
+49.331388 10.988626 
+<enddata>
