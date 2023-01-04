@@ -1,0 +1,35 @@
+#*******************************************
+# MacVersion = 1.0
+# MacDescription = Macro für die Nürnberger City Challenge (GC5PK8F)
+# MacAuthor = CachingFoX
+# MacFileName = NuernbergCityChallenge.gsk
+# MacUrl = https://raw.githubusercontent.com/CachingFoX/gsak-automation/master/NuernbergCityChallenge.gsk
+#*******************************************
+
+# Workaround for development and productive usage
+$folder = ".\assets\"
+IF FolderExists($folder)
+  # development
+  $folder = ".\assets\"
+ELSE
+  # productive
+  $folder= $_AppData+"\macros\NuernbergCityChallenge\"
+ENDIF
+
+
+transaction action=begin
+
+CANCELFILTER
+Goto Position=Top
+While not($_Eol)
+   $d_UserData = ""
+   $d_County = ""
+   Goto Position=Next
+EndWhile
+
+# GetPolygon fields: http://gsak.net/help/hs23760.htm
+$updated = GetPolygon( "UOZ", $folder+"nucc*.polygon" )
+$updated = GetPolygon( "UOZ update=[]", $folder+"nucc-16c.polygon" ) # workaround 
+$tmpN = GetCounty("yb")
+
+transaction action=end
