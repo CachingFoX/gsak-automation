@@ -24,3 +24,6 @@ Thumbs.db:encryptable
 
 ### GSAK ###
 **/*.gskz
+
+### Python ###
+venv
