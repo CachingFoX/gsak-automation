@@ -10,6 +10,15 @@
 Ein Vergleich mit OSM Daten zeigt den ein oder anderen Unterschied bein den Fläche der BVG
 ![](./images/polygon_2b.png)
 
+https://geoportal.nuernberg.de/masterportal/sta_gebietsgliederungen/#
+
+![](./images/polygon_2b_geoportal.PNG)
+
 ### Encoding Polygon files
 * Windows 1252
 * CRLF
+
+### Datenquelle
+https://geoportal.nuernberg.de/server/services/Fachdaten/Gebietsgliederungen/MapServer/WFSServer?service=WFS&version=1.1.0&request=GetFeature&srsName=EPSG:4326&bbox=49,10,50,12,EPSG:4326&typeName=B%C3%BCrgerversammlungsgebiete
+
+### GSKZ Datei
