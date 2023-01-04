@@ -10,6 +10,10 @@
 Ein Vergleich mit OSM Daten zeigt den ein oder anderen Unterschied bein den Fläche der BVG
 ![](./images/polygon_2b.png)
 
+https://geoportal.nuernberg.de/masterportal/sta_gebietsgliederungen/#
+
+![](./images/polygon_2b_geoportal.PNG)
+
 ### Encoding Polygon files
 * Windows 1252
 * CRLF
