@@ -1,7 +1,7 @@
 import zipfile
 
 def create_gskz( gsk_filename ):
-  with zipfile.ZipFile(f"{gsk_filename}z_", 'w', zipfile.ZIP_DEFLATED) as zipf:
+  with zipfile.ZipFile(f"{gsk_filename}z", 'w', zipfile.ZIP_DEFLATED) as zipf:
     zipf.comment = f"{gsk_filename}".encode('windows-1250')+ b"\xfeUnknown\xfeUnknown\xfe\xfe"
 
 
