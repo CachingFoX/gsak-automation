@@ -1,0 +1,28 @@
+#*******************************************
+# MacVersion = 0.1
+# MacDescription = This example shows how to create HTML code in a simple and clear way
+# MacAuthor = CachingFoX
+# MacFileName = html-string-template.gsk
+# MacUrl = 
+#*******************************************
+
+# Definition of the HTML fragment
+<data> VarName=$HtmlFragmentTemplate
+<p style="text-align:center;">
+  <a href="%LINK%" target="_blank">
+    <img src="%IMGURL%" style="%STYLE%"/>
+  </a>
+</p>
+<enddata>
+
+$link = "https://gsak.net"
+$img = "https://gsak.net/square128.png"
+$style = "border: none;"
+
+# Replace placeholders in the template
+$html = $HtmlFragmentTemplate
+$html = Replace("%LINK%",$link,$html)
+$html = Replace("%IMGURL%",$img,$html)
+$html = Replace("%STYLE%",$style,$html)
+
+MsgOk msg=$html
