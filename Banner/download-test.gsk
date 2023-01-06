@@ -1,0 +1,15 @@
+#*******************************************
+# MacVersion = 0.1
+# MacDescription = Download a file from Github
+# MacAuthor = CachingFoX
+# MacFileName = download-test.gsk
+# MacUrl = https://raw.githubusercontent.com/CachingFoX/gsak-banner/master/download-test.gsk
+#*******************************************
+
+$Data = GetUrl("https://raw.githubusercontent.com/CachingFoX/gsak-banner/master/banners.csv")
+IF Equal(Left($Data,7),"*error*")
+  MsgOk msg=$data
+  Cancel
+ELSE
+  MsgOk msg=$data
+ENDIF

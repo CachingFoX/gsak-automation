@@ -1,0 +1,567 @@
+#*******************************************
+# MacVersion = 0.1
+# MacDescription = Create banners for your founds
+# MacAuthor = CachingFoX
+# MacFileName = gen-banner-ui.gsk
+# MacUrl = https://raw.githubusercontent.com/CachingFoX/gsak-banner/master/gen-banner-ui.gsk
+#*******************************************
+
+$BannerDataUrl = "https://raw.githubusercontent.com/CachingFoX/gsak-banner/%BRANCH%/data/banners.csv"
+$BannerListFingerprintUrl = "https://api.github.com/repos/CachingFoX/gsak-banner/contents/data?ref=%BRANCH%"
+
+
+# -----------------------------------------------
+#  Prepare database
+#
+$status = sqlite("sql",$sqlTableBannerList,"sqlget=0")
+$status = sqlite("sql",$sqlTableBannerMetadata,"sqlget=0")
+
+# Prefill form
+$rbtnOutputFile = True
+$optBranch = "stable"
+MacSettings Type=R FileCheck=N
+GOSUB name=CheckForUpdates
+
+While True
+    $exit = Form($formMain,"")
+    BeginCase
+        Case $exit = "SystemExit"
+            CANCEL
+        Case $exit = "btnClose"
+            CANCEL
+        Case $exit = "btnDownload"
+            GOSUB name=DownloadBannerList
+            GOSUB name=CheckForUpdates 
+        Case $exit = "btnCheckUpdate"
+            GOSUB name=CheckForUpdates
+        Case $exit = "btnSwipeOut"
+            GOSUB name=SwipeOut
+            GOSUB name=CheckForUpdates     
+        Case $exit = "btnCopyBranchUrl"
+            $url = Replace("%BRANCH%",$optBranch,$BannerDataUrl)
+            CLIP data=$url
+        Case $exit = "btnGenerate"
+            MacSettings Type=S Vars=rbtnOutputFile,rbtnOutputClipboard,editFileSelect,cboxInterSpaceStation,optOrder,optBranch
+            GOSUB name=GenerateBanner
+    EndCase
+EndWhile
+CANCEL
+
+
+BEGINSUB name=CheckForUpdates
+    $status = ""
+
+    $fingerprint_new = "n/a"
+    $fingerprint_current = "n/a"
+    $download_date = "n/a"
+    $size = "n/a"
+    $enable_generate = "No"
+    $enable_download = "No"
+    $number_of_banner = "n/a"
+    $number_of_matches = "n/a"
+    $updateMessageStyle = ""
+
+    $url = Replace("%BRANCH%",$optBranch,$BannerListFingerprintUrl)
+    $metadata = GetUrl($url)
+    IF Equal(Left($metadata,7),"*error*")
+        MsgOk msg="Get update information failed.\n\n"+$metadata
+        $updateMessageStyle="bold"
+    ELSE
+        $expression = quote("size")+"\s*:\s*\d*"
+        $match = RegExData($expression,$metadata,0)
+        $size = RegExData("\d*",$match,0)
+
+        $expression = quote("sha")+"\s*:\s*"+quote("[0-9a-f]+")
+        $match = RegExData($expression,$metadata,0)
+        $fingerprint_new = RegExData("[0-9a-f]+",$match,0)
+    ENDIF
+
+    $fingerprint_current = Sqlite("sql","SELECT value FROM _gen_banner_metadata WHERE key='fingerprint'")
+
+    IF IsEmpty($fingerprint_current)
+        $status = "No local banner list available. Download it."
+        $fingerprint_current = "n/a"
+        $enable_download = "Yes"
+        $updateMessageStyle="bold"
+    ELSE
+        IF $fingerprint_new <> "n/a"
+            IF $fingerprint_current <> $fingerprint_new
+                $status = "A newer version of the banner list is available."
+                $enable_download = "Yes"
+                $updateMessageStyle="bold"
+            ELSE
+                $status = "Banner list is up-to-date. Have fun!"
+            ENDIF
+        ELSE
+            $status = "Get update information failed"
+            $updateMessageStyle="bold"
+        ENDIF
+        
+        $download_date = sqlite("sql","SELECT timestamp FROM _gen_banner_metadata WHERE key='fingerprint'")
+        $number_of_banner = sqlite("sql","SELECT count(*) FROM bannerlist")
+
+        $sql = $sqlYourBanners
+        $sql = Replace("%FIELDS%","count(*) as matches",$sql)
+        $sql = Replace("%ORDER%","",$sql)
+        $matches = sqlite("sql",$sql,"sqlget=0")
+        $number_of_matches = sqlget("matches")
+
+        $enable_generate = "Yes"
+    ENDIF
+
+    $formMain = EditForm($formMain,"txtNumBanner","Caption",$number_of_banner)
+    $formMain = EditForm($formMain,"txtNumMatches","Caption",$number_of_matches)
+    $formMain = EditForm($formMain,"txtDownloadDate","Caption",$download_date)
+    $formMain = EditForm($formMain,"txtFingerprintNew","Caption",$fingerprint_new)
+    $formMain = EditForm($formMain,"txtFingerprint","Caption",$fingerprint_current)
+    $formMain = EditForm($formMain,"txtBannerListStatus","Caption",$status)
+    $formMain = EditForm($formMain,"txtBannerListStatus","Style",$updateMessageStyle)
+    $formMain = EditForm($formMain,"btnDownload","Enabled",$enable_download)
+    $formMain = EditForm($formMain,"btnGenerate","Enabled",$enable_generate)
+ENDSUB
+
+
+
+BEGINSUB name=DownloadBannerList
+    $url = Replace("%BRANCH%",$optBranch,$BannerListFingerprintUrl)
+    $metadata = GetUrl($url)
+    IF Equal(Left($metadata,7),"*error*")
+        MsgOk msg="Cannot load metainfo "+$metadata
+        Cancel
+    ENDIF
+
+    $expression = quote("size")+"\s*:\s*\d*"
+    $match = RegExData($expression,$metadata,0)
+    $size = RegExData("\d*",$match,0)
+
+    $expression = quote("sha")+"\s*:\s*"+quote("[0-9a-f]+")
+    $match = RegExData($expression,$metadata,0)
+    $fingerprint = RegExData("[0-9a-f]+",$match,0)
+
+    $url = Replace("%BRANCH%",$optBranch,$BannerDataUrl)
+    $data = GetUrl($url)
+    IF Equal(Left($data,7),"*error*")
+        MsgOk msg="Cannot load banner list "+$data
+        Cancel
+    ENDIF
+
+    $status = sqlite("sql","DELETE FROM bannerlist","sqlget=0")
+    $status = sqlite("import",$data,"table=bannerlist delim=,")
+    $status = sqlite("sql","DELETE FROM bannerlist WHERE code='code';")
+    
+    $status = Sqlite("sql","DELETE FROM _gen_banner_metadata WHERE key='fingerprint'")
+    $status = Sqlite("sql","INSERT INTO _gen_banner_metadata (key,value) VALUES('fingerprint','$fingerprint')")
+ENDSUB
+
+BEGINSUB name=SwipeOut
+    $status = sqlite("sql","DELETE FROM bannerlist","sqlget=0")
+    $status = Sqlite("sql","DELETE FROM _gen_banner_metadata WHERE key='fingerprint'")
+ENDSUB
+
+BEGINSUB name=GenerateBanner
+
+    $big = addstr(1,"clear")
+
+    # Fun Banner: "Ich habe das Listing gelesen/International Space Station"
+    IF $cboxInterSpaceStation = True
+        $html = $HtmlBannerFragmentTemplate
+        $html = Replace("%LINK%","https://coord.info/GC1BE91",$html)
+        $html = Replace("%IMGURL%","https://d1u1p2xjjiahg3.cloudfront.net/33cdfdfc-3386-4ebf-8c63-694bf45b5c68.gif",$html)
+        $html = Replace("%STYLE%","",$html)
+        $html = Replace("%ALT%","Banner for International Space Station (GC1BE91)",$html)
+        $html = Replace("%TITLE%","International Space Station (GC1BE91)",$html)
+        $big = addstr(1,"add",$html)
+    ENDIF
+
+    $sql = $sqlYourBanners
+    $sql = Replace("%FIELDS%","*",$sql)
+    BeginCase
+        case $optOrder = "Found Date (newest)"
+            $sql = Replace("%ORDER%","ORDER BY FoundByMeDate DESC",$sql)
+        case $optOrder = "Found Date (oldest)"
+            $sql = Replace("%ORDER%","ORDER BY FoundByMeDate ASC",$sql)
+        OtherWise
+            $sql = Replace("%ORDER%","",$sql) # ORDER BY FoundByMeDate ASC
+    EndCase
+
+
+    $Status = sqlite("sql",$sql,"sqlget=0")
+    WHILE not($_sqleol)
+        $gccode = sqlget("code")
+        $link = ""
+        IF IsEmpty($link) = True
+            $link = "https://coord.info/"+$gccode
+        ENDIF
+
+        $width = sqlget("width")
+        $height = sqlget("height")
+        $style=""
+        IF IsEmpty($width) = False 
+            $style = $style + "width:"+$width+"px;"
+        ENDIF
+        IF IsEmpty($height) = False 
+            $style = $style + "height:"+$height+"px;"
+        ENDIF
+        $style = $style + sqlget("style")
+
+        $img = sqlget("imageUrl")
+
+        $encodeName = sqlget("name")
+        $encodeName = Replace("&","&amp;",$encodeName)
+        $encodeName = Replace(chr(34),"&quot;",$encodeName)
+        $encodeName = Replace("<","&lt;",$encodeName)
+        $encodeName = Replace(">","&gt;",$encodeName)
+        $encodeName = Replace("'","&apos;",$encodeName)
+
+        $title = $encodeName+" ("+$gccode+")"
+        $alt = "Banner for "+$title
+
+        $html = $HtmlBannerFragmentTemplate
+        $html = Replace("%LINK%",$link,$html)
+        $html = Replace("%IMGURL%",$img,$html)
+        $html = Replace("%STYLE%",$style,$html)
+        $html = Replace("%ALT%",$alt,$html)
+        $html = Replace("%TITLE%",$title,$html)
+        $big = addstr(1,"add",$html)
+ 
+        SQLNEXT
+    ENDWHILE
+
+    $big = addstr(1,"get")
+    IF $rbtnOutputFile = True
+        $result = PutFile($editFileSelect,$big)
+        # TODO error check 
+        # TODO feedback to user
+    ENDIF
+    IF $rbtnOutputClipboard = True
+        CLIP Data=$big
+        # TODO feddback to user 
+    ENDIF
+
+ENDSUB
+
+<data> VarName=$sqlYourBanners
+SELECT %FIELDS% FROM Caches
+    INNER JOIN bannerlist
+    ON Caches.Code = bannerlist.code
+    WHERE Caches.Found >= 1
+    %ORDER%
+<enddata>
+
+# import data into the database
+<data> VarName=$sqlTableBannerList
+CREATE TABLE IF NOT EXISTS bannerlist (
+    code varchar(12),
+    imageUrl varchar(255),
+    linkUrl varchar(255),
+    width int,
+    height int,
+    style varchar(255)
+);
+<enddata>
+
+<data> VarName=$sqlTableBannerMetadata
+CREATE TABLE IF NOT EXISTS _gen_banner_metadata (
+    key varchar(255) UNIQUE,
+    value varchar(255),
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+<enddata>
+
+<data> VarName=$HtmlBannerFragmentTemplate
+<p style="text-align:center;">
+  <a href="%LINK%" target="_blank">
+    <img src="%IMGURL%" style="%STYLE%" title="%TITLE%" alt="%ALT%"/>
+  </a>
+</p>
+<enddata>
+
+<data> VarName=$formMain
+Name = Form1
+  Type = Form
+  Height = 523
+  Width = 499
+
+Name = boxOutput
+  Type = Groupbox
+  Caption = Output
+  Height = 97
+  Left = 8
+  Top = 360
+  Width = 473
+  Taborder = 4
+
+Name = boxOptions
+  Type = Groupbox
+  Caption = Options
+  Height = 73
+  Left = 8
+  Top = 120
+  Width = 473
+  Taborder = 5
+
+Name = boxBannerData
+  Type = Groupbox
+  Caption = Banner data
+  Height = 105
+  Left = 8
+  Top = 8
+  Width = 473
+  Taborder = 6
+
+Name = Groupbox1
+  Type = Groupbox
+  Caption = Export Options
+  Height = 145
+  Left = 8
+  Top = 200
+  Width = 473
+  Taborder = 7
+
+Name = btnClose
+  Type = Button
+  Height = 25
+  Left = 264
+  Top = 464
+  Width = 107
+  Taborder = 2
+  Caption = Close
+
+Name = editFileSelect
+  Type = File
+  Container = boxOutput
+  Height = 21
+  Left = 24
+  Top = 64
+  Width = 433
+  Taborder = 0
+
+Name = btnGenerate
+  Type = Button
+  Enabled = No
+  Height = 25
+  Left = 136
+  Top = 464
+  Width = 105
+  Taborder = 3
+  Caption = Generate
+
+Name = rbtnOutputFile
+  Type = Radiobutton
+  Container = boxOutput
+  Height = 20
+  Left = 8
+  Top = 40
+  Width = 105
+  Taborder = 1
+  Caption = Filesystem
+
+Name = rbtnOutputClipboard
+  Type = Radiobutton
+  Container = boxOutput
+  Height = 20
+  Left = 8
+  Top = 16
+  Width = 98
+  Taborder = 2
+  Caption = Clipboard
+
+Name = cboxInterSpaceStation
+  Type = Checkbox
+  Container = boxOptions
+  Height = 20
+  Left = 16
+  Top = 16
+  Width = 325
+  Taborder = 0
+  Caption = insert banner for the International Space Station
+
+Name = btnDownload
+  Type = Button
+  Container = boxBannerData
+  Height = 25
+  Left = 352
+  Top = 16
+  Width = 105
+  Taborder = 0
+  Caption = Download
+
+Name = Label3
+  Type = Label
+  Container = boxBannerData
+  Height = 17
+  Left = 16
+  Top = 24
+  Width = 41
+  Caption = Status:
+
+Name = txtBannerListStatus
+  Type = Label
+  Container = boxBannerData
+  Height = 17
+  Left = 56
+  Top = 24
+  Width = 52
+  Caption = unknown
+
+Name = Label1
+  Type = Label
+  Container = boxBannerData
+  Height = 17
+  Left = 24
+  Top = 48
+  Width = 64
+  Caption = # of Banner
+
+Name = txtNumBanner
+  Type = Label
+  Container = boxBannerData
+  Height = 17
+  Left = 128
+  Top = 48
+  Width = 25
+  Caption = n/a
+
+Name = Label4
+  Type = Label
+  Container = boxBannerData
+  Height = 17
+  Left = 24
+  Top = 72
+  Width = 71
+  Caption = # of Matches
+
+Name = txtNumMatches
+  Type = Label
+  Container = boxBannerData
+  Height = 17
+  Left = 128
+  Top = 72
+  Width = 25
+  Caption = n/a
+
+Name = Label2
+  Type = Label
+  Container = boxBannerData
+  Height = 17
+  Left = 208
+  Top = 72
+  Width = 82
+  Caption = Download Date
+
+Name = txtDownloadDate
+  Type = Label
+  Container = boxBannerData
+  Height = 17
+  Left = 312
+  Top = 72
+  Width = 25
+  Caption = n/a
+
+Name = optOrder
+  Type = Combobox
+  Container = boxOptions
+  Directinput = No
+  Display = 123
+  Height = 21
+  Left = 136
+  Top = 40
+  Values = Found Date (oldest);Found Date (newest)
+  Width = 201
+  Taborder = 1
+
+Name = Label5
+  Type = Label
+  Container = boxOptions
+  Height = 17
+  Left = 32
+  Top = 43
+  Width = 106
+  Caption = Banners are order by
+
+Name = optBranch
+  Type = Combobox
+  Container = Groupbox1
+  Directinput = No
+  Display = 1
+  Height = 21
+  Left = 120
+  Top = 24
+  Values = stable;master
+  Width = 177
+  Taborder = 0
+
+Name = Label6
+  Type = Label
+  Container = Groupbox1
+  Height = 17
+  Left = 16
+  Top = 27
+  Width = 98
+  Caption = Branch for updates
+
+Name = btnCheckUpdate
+  Type = Button
+  Container = Groupbox1
+  Height = 25
+  Left = 320
+  Top = 112
+  Width = 137
+  Taborder = 1
+  Caption = Check for Updates
+
+Name = btnSwipeOut
+  Type = Button
+  Container = Groupbox1
+  Height = 25
+  Left = 160
+  Top = 112
+  Width = 137
+  Taborder = 2
+  Caption = Swipe out banner list
+
+Name = Label7
+  Type = Label
+  Container = Groupbox1
+  Height = 17
+  Left = 16
+  Top = 56
+  Width = 110
+  Caption = Fingerprint (database)
+
+Name = txtFingerprint
+  Type = Label
+  Container = Groupbox1
+  Height = 17
+  Left = 128
+  Top = 56
+  Width = 34
+
+Name = Label8
+  Type = Label
+  Container = Groupbox1
+  Height = 17
+  Left = 16
+  Top = 80
+  Width = 93
+  Caption = Fingerprint (found)
+
+Name = btnCopyBranchUrl
+  Type = Button
+  Container = Groupbox1
+  Height = 25
+  Left = 320
+  Top = 23
+  Width = 137
+  Taborder = 3
+  Caption = Copy branch URL
+
+Name = txtFingerprintNew
+  Type = Label
+  Container = Groupbox1
+  Height = 17
+  Left = 128
+  Top = 80
+  Width = 34
+
+<enddata>
